@@ -18,6 +18,19 @@ def _percent_rounded_half_up(amount_cents, percent):
     """Integer percentage of a cent amount; half a cent rounds up."""
     return (amount_cents * percent + 50) // 100
 
+def _find_product(catalog, product_id):
+    """Return the catalog entry with this ID, or None if there is none."""
+    for product in catalog:
+        if product["product_id"] == product_id:
+            return product
+    return None
+
+def _find_order(orders, order_id):
+    """Return the order with this ID, or raise ValueError."""
+    for order in orders:
+        if order["order_id"] == order_id:
+            return order
+    raise ValueError("Unknown order: " + order_id)
 
 class OrderService:
     def __init__(self, state_path=".supplydesk/state.json"):
@@ -40,10 +53,7 @@ class OrderService:
             if not isinstance(item, dict):
                 raise ValueError("Each item must contain a product_id and quantity.")
             product = None
-            for candidate in state["catalog"]:
-                if candidate["product_id"] == item.get("product_id"):
-                    product = candidate
-                    break
+            product = _find_product(state["catalog"], item.get("product_id"))
             if product is None:
                 raise ValueError("Unknown product.")
             quantity = item.get("quantity")
@@ -94,9 +104,9 @@ class OrderService:
             **priced,
         }
         for line in priced["items"]:
-            for product in state["catalog"]:
-                if product["product_id"] == line["product_id"]:
-                    product["stock"] -= line["quantity"]
+            product = _find_product(state["catalog"], line["product_id"])
+            if product is not None:
+                product["stock"] -= line["quantity"]
         state["next_order_number"] += 1
         state["orders"].append(order)
         self.store.save(state)
@@ -106,25 +116,15 @@ class OrderService:
         return self.store.load()["orders"]
 
     def get_order(self, order_id):
-        state = self.store.load()
-        for order in state["orders"]:
-            if order["order_id"] == order_id:
-                return order
-        raise ValueError("Unknown order: " + order_id)
+        return _find_order(self.store.load()["orders"], order_id)
 
     def cancel_order(self, order_id):
         state = self.store.load()
-        order = None
-        for candidate in state["orders"]:
-            if candidate["order_id"] == order_id:
-                order = candidate
-                break
-        if order is None:
-            raise ValueError("Unknown order: " + order_id)
+        order = _find_order(state["orders"], order_id)
         for line in order["items"]:
-            for product in state["catalog"]:
-                if product["product_id"] == line["product_id"]:
-                    product["stock"] += line["quantity"]
+            product = _find_product(state["catalog"], line["product_id"])
+            if product is not None:
+                product["stock"] += line["quantity"]
         order["status"] = "cancelled"
         self.store.save(state)
         return order
