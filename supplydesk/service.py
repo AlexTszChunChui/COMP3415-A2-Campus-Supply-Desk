@@ -77,7 +77,7 @@ class OrderService:
         
         discount = 0
         delivery = 0
-        if customer_type == "student" and subtotal > STUDENT_DISCOUNT_THRESHOLD_CENTS:
+        if customer_type == "student" and subtotal >= STUDENT_DISCOUNT_THRESHOLD_CENTS:
             discount = _percent_rounded_half_up(subtotal, STUDENT_DISCOUNT_PERCENT)
         if fulfillment == "delivery" and subtotal - discount < FREE_DELIVERY_THRESHOLD_CENTS:
             delivery = DELIVERY_FEE_CENTS
