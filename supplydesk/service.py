@@ -4,7 +4,7 @@ from supplydesk.storage import JsonStore
 from supplydesk.storage import JsonStore
 
 CUSTOMER_TYPES = ("regular", "student")
-FULFILLMENT_OPTIONS = ("pickup", "delivery")
+FULFILLMENT_OPTIONS = ("pickup", "delivery", "express")
 
 MIN_QUANTITY = 1
 MAX_QUANTITY = 99
@@ -13,6 +13,7 @@ STUDENT_DISCOUNT_PERCENT = 10
 STUDENT_DISCOUNT_THRESHOLD_CENTS = 5000
 DELIVERY_FEE_CENTS = 600
 FREE_DELIVERY_THRESHOLD_CENTS = 10000
+EXPRESS_FEE_CENTS = 1200
 
 def _percent_rounded_half_up(amount_cents, percent):
     """Integer percentage of a cent amount; half a cent rounds up."""
@@ -43,8 +44,8 @@ class OrderService:
         """Validate a request and price it. Shared by quote() and place_order()."""
         if customer_type not in ("regular", "student"):
             raise ValueError("Customer type must be regular or student.")
-        if fulfillment not in ("pickup", "delivery"):
-            raise ValueError("Fulfillment must be pickup or delivery.")
+        if fulfillment not in FULFILLMENT_OPTIONS:
+            raise ValueError("Fulfillment must be pickup, delivery, or express.")
         if not isinstance(items, list) or not items:
             raise ValueError("An order must contain at least one item.")
         lines = []
@@ -84,6 +85,8 @@ class OrderService:
             discount = _percent_rounded_half_up(subtotal, STUDENT_DISCOUNT_PERCENT)
         if fulfillment == "delivery" and subtotal - discount < FREE_DELIVERY_THRESHOLD_CENTS:
             delivery = DELIVERY_FEE_CENTS
+        elif fulfillment == "express":
+            delivery = EXPRESS_FEE_CENTS          # flat fee, never waived (CR-01 req. 2)
         return {
             "customer_type": customer_type,
             "fulfillment": fulfillment,

@@ -172,6 +172,7 @@ You can perform operations directly instead of using the menu. These commands ar
 python -m supplydesk catalog
 python -m supplydesk quote --customer regular --item notebook:2
 python -m supplydesk quote --customer student --fulfillment delivery --item hoodie:2
+python -m supplydesk quote --customer student --fulfillment express --item hoodie:2
 ```
 
 Use repeated `--item` options for multiple items:
