@@ -48,7 +48,9 @@ class OrderService:
         if not isinstance(items, list) or not items:
             raise ValueError("An order must contain at least one item.")
         lines = []
+        requested = {}
         subtotal = 0
+
         for item in items:
             if not isinstance(item, dict):
                 raise ValueError("Each item must contain a product_id and quantity.")
@@ -59,7 +61,8 @@ class OrderService:
             quantity = item.get("quantity")
             if type(quantity) is not int or quantity < MIN_QUANTITY or quantity > MAX_QUANTITY:
                 raise ValueError(f"Quantity must be an integer from {MIN_QUANTITY} to {MAX_QUANTITY}.")
-            if quantity > product["stock"]:
+            requested[product["product_id"]] = requested.get(product["product_id"], 0) + quantity
+            if requested[product["product_id"]] > product["stock"]:
                 raise ValueError("Not enough stock for " + product["product_id"] + ".")
             line_total = product["unit_price_cents"] * quantity
             subtotal += line_total
