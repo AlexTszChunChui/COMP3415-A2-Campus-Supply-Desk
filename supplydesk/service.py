@@ -1,6 +1,22 @@
 """Operations used by the command-line order desk."""
 
 from supplydesk.storage import JsonStore
+from supplydesk.storage import JsonStore
+
+CUSTOMER_TYPES = ("regular", "student")
+FULFILLMENT_OPTIONS = ("pickup", "delivery")
+
+MIN_QUANTITY = 1
+MAX_QUANTITY = 99
+
+STUDENT_DISCOUNT_PERCENT = 10
+STUDENT_DISCOUNT_THRESHOLD_CENTS = 5000
+DELIVERY_FEE_CENTS = 600
+FREE_DELIVERY_THRESHOLD_CENTS = 10000
+
+def _percent_rounded_half_up(amount_cents, percent):
+    """Integer percentage of a cent amount; half a cent rounds up."""
+    return (amount_cents * percent + 50) // 100
 
 
 class OrderService:
@@ -31,8 +47,8 @@ class OrderService:
             if product is None:
                 raise ValueError("Unknown product.")
             quantity = item.get("quantity")
-            if type(quantity) is not int or quantity < 1 or quantity > 99:
-                raise ValueError("Quantity must be an integer from 1 to 99.")
+            if type(quantity) is not int or quantity < MIN_QUANTITY or quantity > MAX_QUANTITY:
+                raise ValueError(f"Quantity must be an integer from {MIN_QUANTITY} to {MAX_QUANTITY}.")
             if quantity > product["stock"]:
                 raise ValueError("Not enough stock for " + product["product_id"] + ".")
             line_total = product["unit_price_cents"] * quantity
@@ -44,12 +60,17 @@ class OrderService:
                 "quantity": quantity,
                 "line_total_cents": line_total,
             })
+        if customer_type not in CUSTOMER_TYPES:
+            raise ValueError("Customer type must be regular or student.")
+        if fulfillment not in FULFILLMENT_OPTIONS:
+            raise ValueError("Fulfillment must be pickup or delivery.")
+        
         discount = 0
-        if customer_type == "student" and subtotal > 5000:
-            discount = (subtotal * 10 + 50) // 100
         delivery = 0
-        if fulfillment == "delivery" and subtotal - discount < 10000:
-            delivery = 600
+        if customer_type == "student" and subtotal > STUDENT_DISCOUNT_THRESHOLD_CENTS:
+            discount = _percent_rounded_half_up(subtotal, STUDENT_DISCOUNT_PERCENT)
+        if fulfillment == "delivery" and subtotal - discount < FREE_DELIVERY_THRESHOLD_CENTS:
+            delivery = DELIVERY_FEE_CENTS
         return {
             "customer_type": customer_type,
             "fulfillment": fulfillment,
